@@ -1,80 +1,78 @@
+"""
+    ADTypes.jl
+
+[ADTypes.jl](https://github.com/SciML/ADTypes.jl) is a multi-valued logic system to choose an automatic differentiation (AD) package and specify its parameters.
+"""
 module ADTypes
 
+using Base: @deprecate
+
 """
-Base type for AD choices.
+    AbstractADType
+
+Abstract supertype for all AD choices.
 """
 abstract type AbstractADType end
 
-abstract type AbstractReverseMode <: AbstractADType end
-abstract type AbstractForwardMode <: AbstractADType end
-abstract type AbstractFiniteDifferencesMode <: AbstractADType end
-abstract type AbstractSymbolicDifferentiationMode <: AbstractADType end
+Base.broadcastable(ad::AbstractADType) = Ref(ad)
 
-abstract type AbstractSparseReverseMode <: AbstractReverseMode end
-abstract type AbstractSparseForwardMode <: AbstractForwardMode end
-abstract type AbstractSparseFiniteDifferences <: AbstractFiniteDifferencesMode end
+@inline _unwrap_val(::Val{T}) where {T} = T
+@inline _unwrap_val(x) = x
 
-Base.@kwdef struct AutoFiniteDiff{T1, T2, T3} <: AbstractFiniteDifferencesMode
-    fdtype::T1 = Val(:forward)
-    fdjtype::T2 = fdtype
-    fdhtype::T3 = Val(:hcentral)
+include("compat.jl") # @public macro
+include("mode.jl")
+include("dense.jl")
+include("sparse.jl")
+include("legacy.jl")
+include("symbols.jl")
+
+if !isdefined(Base, :get_extension)
+    include("../ext/ADTypesChainRulesCoreExt.jl")
+    include("../ext/ADTypesEnzymeCoreExt.jl")
 end
 
-Base.@kwdef struct AutoFiniteDifferences{T} <: AbstractFiniteDifferencesMode
-    fdm::T = nothing
-end
-
-struct AutoForwardDiff{chunksize,T} <: AbstractForwardMode
-    tag::T
-end
-
-function AutoForwardDiff(; chunksize = nothing, tag = nothing)
-    AutoForwardDiff{chunksize, typeof(tag)}(tag)
-end
-
-
-Base.@kwdef struct AutoReverseDiff <: AbstractReverseMode
-    compile::Bool = false
-end
-
-struct AutoZygote <: AbstractReverseMode end
-struct AutoSparseZygote <: AbstractSparseReverseMode end
-
-Base.@kwdef struct AutoEnzyme{M} <: AbstractADType
-    mode::M = nothing
-end
-
-struct AutoTracker <: AbstractReverseMode end
-
-Base.@kwdef struct AutoModelingToolkit <: AbstractSymbolicDifferentiationMode
-    obj_sparse::Bool = false
-    cons_sparse::Bool = false
-end
-
-struct AutoSparseFiniteDiff <: AbstractSparseFiniteDifferences end
-
-struct AutoSparseForwardDiff{chunksize,T} <: AbstractSparseForwardMode
-    tag::T
-end
-
-function AutoSparseForwardDiff(; chunksize = nothing, tag = nothing)
-    AutoSparseForwardDiff{chunksize, typeof(tag)}(tag)
-end
-
-Base.@kwdef struct AutoSparseReverseDiff <: AbstractSparseReverseMode 
-    compile::Bool = false
-end
-
-export AutoFiniteDiff,
+# Automatic Differentiation
+export AbstractADType
+export AutoChainRules,
+       AutoDiffractor,
+       AutoEnzyme,
+       AutoFastDifferentiation,
+       AutoFiniteDiff,
        AutoFiniteDifferences,
        AutoForwardDiff,
-       AutoReverseDiff,
-       AutoZygote,
-       AutoEnzyme,
-       AutoTracker,
+       AutoGTPSA,
        AutoModelingToolkit,
-       AutoSparseFiniteDiff,
-       AutoSparseForwardDiff,
-       AutoSparseZygote,
-       AutoSparseReverseDiff
+       AutoMooncake,
+       AutoPolyesterForwardDiff,
+       AutoReverseDiff,
+       AutoSymbolics,
+       AutoTapir,
+       AutoTaylorDiff,
+       AutoTracker,
+       AutoZygote
+@public AbstractMode
+@public ForwardMode, ReverseMode, ForwardOrReverseMode, SymbolicMode
+@public mode
+@public Auto
+
+# Sparse Automatic Differentiation
+export AutoSparse
+@public dense_ad
+
+# Sparsity detection
+export AbstractSparsityDetector
+export jacobian_sparsity, hessian_sparsity
+@public sparsity_detector
+@public NoSparsityDetector
+@public KnownJacobianSparsityDetector
+@public KnownHessianSparsityDetector
+
+# Matrix coloring
+export AbstractColoringAlgorithm
+export column_coloring, row_coloring, symmetric_coloring
+@public coloring_algorithm
+@public NoColoringAlgorithm
+
+# legacy exports are taken care of by @deprecated
+
 end
