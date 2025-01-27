@@ -1,27 +1,28 @@
 # ADTypes.jl: Multi-Valued Logic for Automatic Differentiation Choices
 
-[![Build Status](https://github.com/Vaibhavdixit02/ADTypes.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Vaibhavdixit02/ADTypes.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://SciML.github.io/ADTypes.jl/stable/)
+[![Docs dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://SciML.github.io/ADTypes.jl/dev/)
+[![Build Status](https://github.com/SciML/ADTypes.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/SciML/ADTypes.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/SciML/ADTypes.jl/branch/main/graph/badge.svg)](https://app.codecov.io/gh/SciML/ADTypes.jl)
 
-ADTypes.jl is a common system for implementing multi-valued logic for choosing which
-automatic differentiation library to use.
+ADTypes.jl is a multi-valued logic system to choose an automatic differentiation (AD) package and specify its parameters.
 
-## Why Should Packages Adopt This?
+## Which AD libraries are supported?
 
-The current standard is to have a keyword argument with `autodiff = true` or `autodiff = false`.
-However, boolean logic is not sufficient to be able to do all of the choices that are
-required. For example for forward-mode AD there is ForwardDiff vs Enzyme, and thus `true`
-is ambgiuous. As libraries begin to support more and more of these autodiff mechanisms
-for their trade-offs, every library will have their own version of `ChooseForwardDiff()`
-etc. which would be a mess. Hence ADTypes.jl giving a single set of shared types for this.
-`ADTypes.AutoForwardDiff()` is the way to do it.
+See the API reference in the documentation.
+If a given package is missing, feel free to open an issue or pull request.
 
-## Why are they types instead of enums? Or EnumX?
+## Why should AD users adopt this standard?
 
-If they were enums then they would not be dispatch type-level information. This is needed
-for the internals of many of the packages to be type-stable because the choice of `config`
-type is different per package, i.e. what needs to be cached in order to use everything in
-a non-allocating manner.
+A natural approach is to use a keyword argument with e.g. `Bool` or `Symbol` values.
+Let's see a few examples to understand why this is not enough:
 
-## My AD Package is Missing?
+  - `autodiff = true`: ambiguous, we don't know which AD package should be used
+  - `autodiff = :forward`: ambiguous, there are several AD packages implementing both forward and reverse mode (and there are other modes beyond that)
+  - `autodiff = :Enzyme`: ambiguous, some AD packages can work both in forward and reverse mode
+  - `autodiff = (:Enzyme, :forward)`: not too bad, but many AD packages require additional configuration (number of chunks, tape compilation, etc.)
 
-Sure, give a PR to add it.
+A more involved struct is thus required, with package-specific parameters.
+If every AD user develops their own version of said struct, it will ruin interoperability.
+This is why ADTypes.jl provides a single set of shared types for this task, as an extremely lightweight dependency.
+They are types and not enums because we need AD choice information statically to use it for dispatch.
